@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MPN Thrombosis Risk Score — Research Calculator v0.2</title>
+<title>MPN Thrombosis Residual Risk Score — Research Calculator v0.3</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root {
@@ -300,6 +300,79 @@
   footer p { margin-bottom: 6px; }
   footer a { color: var(--primary); text-decoration: none; }
   .hidden { display: none !important; }
+  /* Filter gate */
+  .filter-gate {
+    padding: 32px 28px;
+    background: linear-gradient(135deg, #eef2f7 0%, #f0f7ff 100%);
+    border: 2px solid var(--primary-light);
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .filter-title {
+    font-size: 15px;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 16px;
+    font-weight: 600;
+  }
+  .filter-question {
+    font-size: 17px;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    color: var(--text);
+  }
+  .filter-options {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    padding: 16px 28px;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    min-width: 220px;
+  }
+  .filter-btn.yes {
+    background: #ffe6e6;
+    color: #7a1717;
+    border-color: var(--danger-border);
+  }
+  .filter-btn.yes:hover { background: #ffd0d0; }
+  .filter-btn.no {
+    background: var(--low);
+    color: var(--low-text);
+    border-color: #4caf50;
+  }
+  .filter-btn.no:hover { background: #a5d8a5; }
+
+  /* Out-of-scope */
+  .out-of-scope {
+    padding: 32px 28px;
+    background: #fff4e6;
+    border: 2px solid var(--warning-border);
+    border-radius: 8px;
+    text-align: left;
+  }
+  .out-of-scope h2 {
+    font-size: 20px;
+    color: #a05020;
+    margin-bottom: 16px;
+    border: none;
+    padding: 0;
+  }
+  .out-of-scope p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text);
+  }
   @media (max-width: 600px) {
     body { padding: 10px; }
     header { padding: 18px 20px; }
@@ -320,16 +393,40 @@
 <body>
 <div class="container">
   <header>
-    <h1>MPN Thrombosis Risk Score <span class="version-badge">v0.2 preliminary</span></h1>
-    <div class="subtitle">Integrated Thrombotic Risk Assessment for Polycythaemia Vera and Essential Thrombocythaemia</div>
+    <h1>MPN Thrombosis Residual Risk Score <span class="version-badge">v0.3 preliminary</span></h1>
+    <div class="subtitle">Thrombotic risk stratification in PV and ET patients without prior thrombosis</div>
   </header>
   <div class="disclaimer-banner">
-    <strong>⚠ For research purposes only.</strong> This calculator implements a draft score derived from a systematic literature review.
+    <strong>⚠ For research purposes only.</strong> This calculator implements a draft score derived from systematic literature review.
     It has not undergone prospective clinical validation and is not approved as a medical device.
-    Do not use as a substitute for clinical judgement or for individual treatment decisions.
+    Do not use as a substitute for clinical judgement or for individual treatment decisions.<br><br>
+    <strong>Scope:</strong> This score applies <strong>only to PV and ET patients without any prior thrombotic event</strong>. Patients with a history of thrombosis are classified high-risk by ELN/IPSET-t consensus and receive cytoreduction regardless of this score.
   </div>
 
   <main>
+    <!-- ============ FILTER GATE ============ -->
+    <div id="filter-gate" class="filter-gate">
+      <h2 class="filter-title">Before starting: eligibility check</h2>
+      <p class="filter-question"><strong>Has the patient ever had any thrombotic event</strong> (arterial — MI, stroke, TIA, peripheral arterial occlusion — or venous — DVT, PE, splanchnic vein thrombosis, cerebral venous thrombosis)?</p>
+      <div class="filter-options">
+        <button type="button" class="filter-btn yes" id="filter-yes">YES — has prior thrombosis</button>
+        <button type="button" class="filter-btn no" id="filter-no">NO — no prior thrombosis</button>
+      </div>
+    </div>
+
+    <!-- Out-of-scope message (shown if user answered YES) -->
+    <div id="out-of-scope" class="out-of-scope hidden">
+      <h2>⚠ This score is not applicable</h2>
+      <p>The patient has a history of thrombosis and is therefore classified <strong>high-risk by ELN and IPSET-thrombosis consensus</strong>, independently of any additional risk factors. Cytoreductive therapy is indicated per current guidelines.</p>
+      <p style="margin-top: 14px;">The present score was derived for and validated in the population of patients <strong>without</strong> prior thrombotic events, where current guideline-based stratification is least granular and where the decision to initiate cytoreduction is most uncertain.</p>
+      <p style="margin-top: 14px; font-size: 14px; color: var(--text-muted);">A separate score for stratifying recurrence risk in patients with prior thrombosis is under development as a follow-up investigation.</p>
+      <div style="margin-top: 20px;">
+        <button type="button" class="secondary" id="restart-btn">↻ Start over</button>
+      </div>
+    </div>
+
+    <!-- ============ MAIN CALCULATOR (hidden until filter passed) ============ -->
+    <div id="calculator-body" class="hidden">
     <!-- Disease selector -->
     <div class="disease-selector">
       <label>
@@ -382,8 +479,12 @@
       <button class="secondary" id="export-csv-btn">💾 Export CSV</button>
       <button class="ghost" id="reset-btn">↺ Reset</button>
     </div>
+    </div><!-- /#calculator-body -->
   </main>
 
+  <footer>
+    <p>Calculator based on structured review of 76 publications (QUIPS-assessed). Score applies to patients without prior thrombosis.</p>
+  </footer>
 </div>
 
 <script>
@@ -392,11 +493,9 @@
 // =============================================================
 const SCORES = {
   PV: {
-    title: "PV Thrombosis Score",
-    max: 28,
+    title: "PV Thrombosis Residual Risk Score",
+    max: 18,
     core: [
-      { id: "pv_prior_at", label: "Prior arterial thrombosis", cutoff: "History of: MI, ischaemic stroke/TIA, peripheral arterial occlusion, retinal artery occlusion", points: 5 },
-      { id: "pv_prior_vt", label: "Prior venous thrombosis (including SVT)", cutoff: "History of: DVT, PE, splanchnic or cerebral venous thrombosis, superficial VT", points: 5 },
       { id: "pv_age60", label: "Age ≥60 years", cutoff: "At the time of evaluation", points: 2 },
       { id: "pv_vaf50", label: "JAK2 VAF >50%", cutoff: "Measured on peripheral blood or bone marrow", points: 2 },
       { id: "pv_leuk", label: "Persistent leukocytosis", cutoff: "WBC ≥11×10⁹/L confirmed on ≥2 measurements", points: 2 },
@@ -409,14 +508,14 @@ const SCORES = {
       { id: "pv_smoke", label: "Active smoking", cutoff: "Current smoker at time of evaluation", points: 1 }
     ],
     classes: [
-      { max: 3, name: "LOW", css: "low", rate: "<1% / year",
-        phenotype: "<strong>Reference phenotype:</strong> truly low-risk — age &lt;60, no thrombosis history, JAK2 VAF &lt;50%, Hct well controlled, no or minimal CVRF.<br><br><strong>Proposed management:</strong> phlebotomy + low-dose aspirin; aggressive modifiable CVRF management." },
-      { max: 7, name: "INTERMEDIATE", css: "intermediate", rate: "1.5–3% / year",
-        phenotype: "<strong>Reference phenotype:</strong> either (a) any patient with a prior thrombotic event as sole risk modifier (score 5, upper Intermediate), or (b) combination of 2+ conventional risk modifiers (e.g. age &#8805;60 plus JAK2 VAF &gt;50%). Approximates ELN high-risk minimum.<br><br><strong>Proposed management:</strong> consider individualised cytoreduction; evaluate first-line (HU or IFN) based on age, VAF, symptoms; optimise Hct and CVRF; for patients with isolated prior thrombosis, cytoreduction is indicated per ELN guidance." },
-      { max: 12, name: "HIGH", css: "high", rate: "3–5% / year",
-        phenotype: "<strong>Reference phenotype:</strong> prior thrombosis combined with additional risk modifiers (age &#8805;60 plus at least one further CVRF or disease-activity marker), or multiple concurrent modifiers without prior thrombosis.<br><br><strong>Proposed management:</strong> cytoreduction indicated; consider IFN or ruxolitinib if HU resistance/intolerance; aspirin/anticoagulation tailored to type of prior thrombosis." },
+      { max: 2, name: "LOW", css: "low", rate: "<1% / year",
+        phenotype: "<strong>Reference phenotype:</strong> classic low-risk — age &lt;60, no significant modifiers, well controlled.<br><br><strong>Proposed management:</strong> phlebotomy + low-dose aspirin; optimisation of modifiable CVRF. No indication for cytoreduction." },
+      { max: 6, name: "INTERMEDIATE", css: "intermediate", rate: "1.5–3% / year",
+        phenotype: "<strong>Reference phenotype:</strong> either (a) age &#8805;60 with one or two additional modifiers, or (b) younger patient with cluster of risk factors.<br><br><strong>Proposed management:</strong> individualised cytoreduction (assess VAF, leukocytes, NLR, Hct, CVRF). QRISK3 can help identify patients benefiting from cytoreduction even if conventionally low-risk." },
+      { max: 10, name: "HIGH", css: "high", rate: "3–5% / year",
+        phenotype: "<strong>Reference phenotype:</strong> multiple concurrent MPN-specific modifiers and CVRF. Approximates the CSS-positive phenotype (Palandri 2025) in patients without prior thrombosis.<br><br><strong>Proposed management:</strong> cytoreduction indicated; aggressive Hct optimisation; consider IFN or ruxolitinib if HU resistance." },
       { max: 999, name: "VERY HIGH", css: "veryhigh", rate: ">5% / year",
-        phenotype: "<strong>Reference phenotype:</strong> full CSS-positive profile (prior thrombosis + inadequate Hct + progressive splenomegaly + CVRF cluster; Palandri 2025), recurrent thrombosis, thrombosis while on appropriate therapy, or multi-factorial profile with &#8805;3 modifiers in addition to prior thrombosis. Approximates De Stefano 2008 recurrent-thrombosis cohort (7.6%/year).<br><br><strong>Proposed management:</strong> cytoreduction mandatory; early switch if inadequate response; tight surveillance; extended anticoagulation; consider clinical trial enrolment." }
+        phenotype: "<strong>Reference phenotype:</strong> multi-factorial phenotype (&gt;5 concurrent variables) without prior thrombosis — rare but possible. Risk comparable to patients with prior thrombosis.<br><br><strong>Proposed management:</strong> cytoreduction + tight surveillance; consider primary anticoagulation in selected cases; evaluate clinical trial enrolment." }
     ],
     additional: [
       { id: "pv_qrisk3", label: "QRISK3 ≥7.5%", desc: "General-population CV risk; validated in PV (Duminuco 2025)" },
@@ -424,15 +523,13 @@ const SCORES = {
       { id: "pv_rdw", label: "Elevated RDW", desc: "Validated in general population (Manz 2023); MPN-specific cutoff undefined" },
       { id: "pv_thromboinflam", label: "Thromboinflammation biomarkers", desc: "Citrullinated H3, S100A8/A9, tissue factor — experimental (Guy 2024)" },
       { id: "pv_hmr", label: "HMR mutations (especially SRSF2)", desc: "Predominantly prognostic for survival; in MIPSS-PV" },
-      { id: "pv_age70", label: "Age ≥70 (extra gradient)", desc: "AAA score: steeper gradient beyond age 70" },
-      { id: "pv_on_treatment_thr", label: "Thrombosis on adequate cytoreduction", desc: "Biological resistance — consider early therapy switch" }
+      { id: "pv_age70", label: "Age ≥70 (extra gradient)", desc: "AAA score: steeper gradient beyond age 70" }
     ]
   },
   ET: {
-    title: "ET Thrombosis Score",
-    max: 13,
+    title: "ET Thrombosis Residual Risk Score",
+    max: 8,
     core: [
-      { id: "et_prior_thr", label: "Prior thrombosis (any site)", cutoff: "History of any arterial or venous thrombotic event", points: 5 },
       { id: "et_age60", label: "Age ≥60 years", cutoff: "At the time of evaluation", points: 2 },
       { id: "et_jak2", label: "JAK2V617F mutation", cutoff: "Present vs absent (CALR, MPL, triple-negative as reference)", points: 2 },
       { id: "et_leuk", label: "Persistent leukocytosis", cutoff: "WBC ≥11×10⁹/L confirmed on ≥2 measurements", points: 2 },
@@ -440,23 +537,22 @@ const SCORES = {
       { id: "et_spleen", label: "Palpable splenomegaly", cutoff: "On clinical examination", points: 1 }
     ],
     classes: [
-      { max: 2, name: "LOW", css: "low", rate: "<1% / year",
-        phenotype: "<strong>Reference phenotype:</strong> truly low-risk ET — age &lt;60, no thrombosis, CALR or triple-negative, or JAK2+ without CVRF. Consistent with IPSET-t very low / low.<br><br><strong>Proposed management:</strong> low-dose aspirin or observation; consider aspirin bid in selected patients; CVRF management." },
-      { max: 5, name: "INTERMEDIATE", css: "intermediate", rate: "1–2% / year",
-        phenotype: "<strong>Reference phenotype:</strong> either (a) any patient with a prior thrombotic event as sole risk modifier (score 5, upper Intermediate), or (b) IPSET-t intermediate (age &#8805;60 plus JAK2+ plus CVRF).<br><br><strong>Proposed management:</strong> consider individualised cytoreduction; aspirin; for patients with isolated prior thrombosis, cytoreduction is indicated per IPSET-t guidance." },
-      { max: 8, name: "HIGH", css: "high", rate: "3–4% / year",
-        phenotype: "<strong>Reference phenotype:</strong> IPSET-t high combined with additional modifiers (e.g. prior thrombosis + age &#8805;60 + JAK2 or WBC or CVRF; multiple concurrent RFs without prior thrombosis).<br><br><strong>Proposed management:</strong> cytoreduction indicated (HU or IFN); aspirin; consider anticoagulation if prior VTE." },
+      { max: 1, name: "LOW", css: "low", rate: "<1% / year",
+        phenotype: "<strong>Reference phenotype:</strong> IPSET-t very low / low — age &lt;60, CALR or triple-negative, or JAK2+ without CVRF.<br><br><strong>Proposed management:</strong> low-dose aspirin or observation; CVRF management." },
+      { max: 4, name: "INTERMEDIATE", css: "intermediate", rate: "1–2% / year",
+        phenotype: "<strong>Reference phenotype:</strong> IPSET-t intermediate (age &#8805;60 + JAK2+ + CVRF), or &lt;60 with 2–3 modifiers cluster.<br><br><strong>Proposed management:</strong> individualised cytoreduction; aspirin." },
+      { max: 6, name: "HIGH", css: "high", rate: "3–4% / year",
+        phenotype: "<strong>Reference phenotype:</strong> combination of 3–4 significant modifiers (age &#8805;60 + JAK2+ + WBC + CVRF).<br><br><strong>Proposed management:</strong> cytoreduction indicated (HU or IFN); aspirin." },
       { max: 999, name: "VERY HIGH", css: "veryhigh", rate: ">4% / year",
-        phenotype: "<strong>Reference phenotype:</strong> prior thrombosis combined with &#8805;3 additional modifiers; recurrent thrombosis; multi-factorial risk profile.<br><br><strong>Proposed management:</strong> cytoreduction + antiplatelet/anticoagulation tailored to type of prior thrombosis; tight surveillance; evaluate second-line if inadequate response." }
+        phenotype: "<strong>Reference phenotype:</strong> all or nearly all modifiers present — rare but identifies maximum residual risk.<br><br><strong>Proposed management:</strong> cytoreduction + tight surveillance." }
     ],
     additional: [
-      { id: "et_qrisk3", label: "QRISK3 ≥7.5%", desc: "Validated in ET (Duminuco 2025); benefit of cytoreduction even in conventional low-risk" },
+      { id: "et_qrisk3", label: "QRISK3 ≥7.5%", desc: "Validated in ET (Duminuco 2025)" },
       { id: "et_aaa", label: "AAA class High or Int-2", desc: "Age + ANC + ALC composite; strong thrombotic gradient (Udine 2024)" },
       { id: "et_ddimer", label: "D-dimer ≥1 mg/L", desc: "Emerging biomarker; part of Zhang L 2025 predictive model" },
       { id: "et_hmr", label: "HMR mutations (SRSF2, IDH1/2)", desc: "Signal aggressive phenotype; predominantly prognostic" },
       { id: "et_extreme_plt", label: "Extreme thrombocytosis >1500×10⁹/L", desc: "Not predictive per se; evaluate VWF:RCo/Ag to exclude acquired vWS (Simini 2025)" },
-      { id: "et_tn_driver", label: "Triple-negative driver status", desc: "Lower thrombotic risk than JAK2 (protective); note only, not scored" },
-      { id: "et_thromboinflam", label: "Thromboinflammation biomarkers", desc: "S100A8/A9, H3cit; correlate with IPSET-t (Guy 2024 — experimental)" }
+      { id: "et_tn_driver", label: "Triple-negative driver status", desc: "Lower thrombotic risk than JAK2 (protective); note only, not scored" }
     ]
   }
 };
@@ -721,6 +817,12 @@ function exportPDF() {
   doc.text(disc, 20, y+11);
   y += 28;
 
+  // Footer
+  doc.setTextColor(140,140,140);
+  doc.setFontSize(7);
+  const ts = new Date().toISOString().replace('T', ' ').split('.')[0];
+  doc.text(`Report generated ${ts} — MPN Thrombosis Residual Risk Score calculator`, 15, 285);
+
   // Save
   const fname = `MPN_ThrombosisScore_${s.disease}_${(pid.replace(/[^a-zA-Z0-9-_]/g,'_') || 'nopid')}_${edate}.pdf`;
   doc.save(fname);
@@ -778,6 +880,22 @@ function resetAll() {
   document.getElementById('eval-by').value = '';
   computeScore();
 }
+
+// =============================================================
+// FILTER GATE LOGIC
+// =============================================================
+document.getElementById('filter-yes').addEventListener('click', () => {
+  document.getElementById('filter-gate').classList.add('hidden');
+  document.getElementById('out-of-scope').classList.remove('hidden');
+});
+document.getElementById('filter-no').addEventListener('click', () => {
+  document.getElementById('filter-gate').classList.add('hidden');
+  document.getElementById('calculator-body').classList.remove('hidden');
+});
+document.getElementById('restart-btn').addEventListener('click', () => {
+  document.getElementById('out-of-scope').classList.add('hidden');
+  document.getElementById('filter-gate').classList.remove('hidden');
+});
 
 // =============================================================
 // WIRING
