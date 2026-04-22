@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MPN Thrombosis Risk Score — Research Calculator v0.2</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --primary: #1F4E78;
+    --primary-light: #305496;
+    --accent: #548235;
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --text: #1a2332;
+    --text-muted: #5a6878;
+    --border: #d9dfe6;
+    --low: #c6efce;
+    --low-text: #006100;
+    --inter: #ffeb9c;
+    --inter-text: #9c6500;
+    --high: #ffd966;
+    --high-text: #7f5e00;
+    --veryhigh: #f4b084;
+    --veryhigh-text: #833c0c;
+    --warning-bg: #fff4e6;
+    --warning-border: #f0a050;
+    --danger-bg: #ffe6e6;
+    --danger-border: #c00000;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  header {
+    background: var(--primary);
+    color: white;
+    padding: 24px 28px;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  header .subtitle {
+    font-size: 13px;
+    opacity: 0.85;
+    font-weight: 400;
+  }
+  .version-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin-left: 8px;
+    letter-spacing: 0.5px;
+  }
+  .disclaimer-banner {
+    background: var(--danger-bg);
+    border-left: 4px solid var(--danger-border);
+    padding: 16px 24px;
+    font-size: 13px;
+    color: #7a1717;
+  }
+  .disclaimer-banner strong { color: var(--danger-border); }
+  main {
+    background: var(--card);
+    padding: 28px;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .disease-selector {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 28px;
+    padding: 18px;
+    background: #eef2f7;
+    border-radius: 6px;
+  }
+  .disease-selector label {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    background: white;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+  .disease-selector label:hover { border-color: var(--primary-light); }
+  .disease-selector input[type="radio"] { cursor: pointer; accent-color: var(--primary); }
+  .disease-selector input[type="radio"]:checked + span { color: var(--primary); font-weight: 600; }
+  .disease-selector label:has(input:checked) {
+    border-color: var(--primary);
+    background: #f0f7ff;
+  }
+  .patient-id-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .patient-id-row > div { flex: 1; min-width: 200px; }
+  .patient-id-row label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .patient-id-row input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .patient-id-row input:focus {
+    outline: 2px solid var(--primary-light);
+    outline-offset: -1px;
+    border-color: var(--primary-light);
+  }
+  .section {
+    margin-bottom: 28px;
+    padding: 18px 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .section h2 {
+    font-size: 15px;
+    color: var(--primary);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .section h2 .desc {
+    display: block;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-muted);
+    text-transform: none;
+    letter-spacing: normal;
+    margin-top: 3px;
+  }
+  .variable-row {
+    display: flex;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    transition: background 0.15s;
+    cursor: pointer;
+    gap: 12px;
+  }
+  .variable-row:hover { background: #eef2f7; }
+  .variable-row input[type="checkbox"] {
+    margin-top: 2px;
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    flex-shrink: 0;
+  }
+  .variable-row .label-wrapper {
+    flex: 1;
+  }
+  .variable-row .label {
+    font-weight: 500;
+    font-size: 14px;
+  }
+  .variable-row .cutoff {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .variable-row .points {
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  .additional-section { background: #f4f9ef; border-color: #c8dfb8; }
+  .additional-section h2 { color: var(--accent); border-bottom-color: #c8dfb8; }
+  .additional-section .points { background: var(--accent); }
+  .result-box {
+    margin-top: 28px;
+    padding: 24px;
+    border-radius: 8px;
+    text-align: center;
+  }
+  .result-box.low { background: var(--low); color: var(--low-text); }
+  .result-box.intermediate { background: var(--inter); color: var(--inter-text); }
+  .result-box.high { background: var(--high); color: var(--high-text); }
+  .result-box.veryhigh { background: var(--veryhigh); color: var(--veryhigh-text); }
+  .result-score {
+    font-size: 52px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .result-score .max {
+    font-size: 22px;
+    opacity: 0.6;
+    font-weight: 400;
+  }
+  .result-class {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  .result-rate {
+    font-size: 14px;
+    opacity: 0.85;
+    margin-bottom: 14px;
+  }
+  .result-phenotype {
+    font-size: 13px;
+    background: rgba(255,255,255,0.5);
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-top: 8px;
+    text-align: left;
+    line-height: 1.6;
+  }
+  .result-phenotype strong { font-weight: 600; }
+  .additional-flags {
+    margin-top: 18px;
+    padding: 14px 18px;
+    background: var(--warning-bg);
+    border-left: 4px solid var(--warning-border);
+    border-radius: 4px;
+    font-size: 13px;
+    text-align: left;
+  }
+  .additional-flags strong { color: #a05020; }
+  .additional-flags ul {
+    margin-top: 6px;
+    padding-left: 20px;
+  }
+  .additional-flags li { margin-bottom: 3px; }
+  .actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  button {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  button.primary { background: var(--primary); color: white; }
+  button.primary:hover { background: var(--primary-light); }
+  button.secondary { background: white; color: var(--primary); border: 1px solid var(--primary); }
+  button.secondary:hover { background: #f0f7ff; }
+  button.ghost { background: transparent; color: var(--text-muted); }
+  button.ghost:hover { color: var(--primary); }
+  footer {
+    margin-top: 28px;
+    padding: 20px;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.7;
+  }
+  footer p { margin-bottom: 6px; }
+  footer a { color: var(--primary); text-decoration: none; }
+  .hidden { display: none !important; }
+  @media (max-width: 600px) {
+    body { padding: 10px; }
+    header { padding: 18px 20px; }
+    header h1 { font-size: 18px; }
+    main { padding: 18px; }
+    .disease-selector { flex-direction: column; }
+    .result-score { font-size: 42px; }
+    .result-class { font-size: 22px; }
+    .variable-row .points { font-size: 12px; padding: 2px 8px; }
+  }
+  @media print {
+    body { background: white; padding: 0; }
+    header, .disclaimer-banner, main { box-shadow: none; }
+    .actions, .disease-selector, footer { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>MPN Thrombosis Risk Score <span class="version-badge">v0.2 preliminary</span></h1>
+    <div class="subtitle">Integrated Thrombotic Risk Assessment for Polycythaemia Vera and Essential Thrombocythaemia</div>
+  </header>
+  <div class="disclaimer-banner">
+    <strong>⚠ For research purposes only.</strong> This calculator implements a draft score derived from a systematic literature review.
+    It has not undergone prospective clinical validation and is not approved as a medical device.
+    Do not use as a substitute for clinical judgement or for individual treatment decisions.
+  </div>
+
+  <main>
+    <!-- Disease selector -->
+    <div class="disease-selector">
+      <label>
+        <input type="radio" name="disease" value="PV" checked>
+        <span>Polycythaemia vera (PV)</span>
+      </label>
+      <label>
+        <input type="radio" name="disease" value="ET">
+        <span>Essential thrombocythaemia (ET)</span>
+      </label>
+    </div>
+
+    <!-- Patient ID (optional, for PDF/report) -->
+    <div class="patient-id-row">
+      <div>
+        <label for="patient-id">Patient identifier (optional, for report)</label>
+        <input type="text" id="patient-id" placeholder="e.g. MPN-0123 (de-identified)" autocomplete="off">
+      </div>
+      <div>
+        <label for="eval-date">Evaluation date</label>
+        <input type="date" id="eval-date">
+      </div>
+      <div>
+        <label for="eval-by">Evaluated by</label>
+        <input type="text" id="eval-by" placeholder="Clinician name / centre" autocomplete="off">
+      </div>
+    </div>
+
+    <!-- Score container — rebuilt on disease change -->
+    <div id="score-area"></div>
+
+    <!-- Result -->
+    <div id="result-box" class="result-box low">
+      <div class="result-score"><span id="score-value">0</span><span class="max">/<span id="score-max">23</span></span></div>
+      <div class="result-class" id="class-name">LOW</div>
+      <div class="result-rate" id="class-rate">Expected annual thrombosis rate: &lt;1%</div>
+      <div class="result-phenotype" id="class-phenotype"></div>
+      <div id="additional-flags-box" class="additional-flags hidden">
+        <strong>⚠ Additional risk factors present:</strong>
+        <ul id="flags-list"></ul>
+        <div style="margin-top: 8px; font-size: 12px; font-style: italic;">
+          These variables do not contribute to the numerical score but warrant caution and may justify individualised upgrading of the risk class on clinical grounds.
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button class="primary" id="export-pdf-btn">📄 Export PDF report</button>
+      <button class="secondary" id="export-csv-btn">💾 Export CSV</button>
+      <button class="ghost" id="reset-btn">↺ Reset</button>
+    </div>
+  </main>
+
+  <footer>
+    <p><strong>Reference:</strong> Duminuco A, et al. A comprehensive thrombotic risk score for PV and ET: a literature-based integrated framework. <em>[Manuscript in preparation, 2026]</em></p>
+    <p>Calculator version 0.2 — preliminary release for research and validation purposes only. © 2026 — Distributed without any warranty.</p>
+    <p>Based on structured review of 76 publications, 57 primary analytical studies (QUIPS-assessed).</p>
+  </footer>
+</div>
+
+<script>
+// =============================================================
+// SCORE DEFINITIONS (from derivation table — B-hybrid approach)
+// =============================================================
+const SCORES = {
+  PV: {
+    title: "PV Thrombosis Score",
+    max: 28,
+    core: [
+      { id: "pv_prior_at", label: "Prior arterial thrombosis", cutoff: "History of: MI, ischaemic stroke/TIA, peripheral arterial occlusion, retinal artery occlusion", points: 5 },
+      { id: "pv_prior_vt", label: "Prior venous thrombosis (including SVT)", cutoff: "History of: DVT, PE, splanchnic or cerebral venous thrombosis, superficial VT", points: 5 },
+      { id: "pv_age60", label: "Age ≥60 years", cutoff: "At the time of evaluation", points: 2 },
+      { id: "pv_vaf50", label: "JAK2 VAF >50%", cutoff: "Measured on peripheral blood or bone marrow", points: 2 },
+      { id: "pv_leuk", label: "Persistent leukocytosis", cutoff: "WBC ≥11×10⁹/L confirmed on ≥2 measurements", points: 2 },
+      { id: "pv_hct", label: "Inadequate haematocrit control", cutoff: "Hct >45% sustained, or ≥6 phlebotomies/year", points: 2 },
+      { id: "pv_nlr5", label: "NLR ≥5", cutoff: "Calculated from the most recent full blood count (neutrophils / lymphocytes)", points: 2 },
+      { id: "pv_spleen", label: "Progressive or palpable splenomegaly", cutoff: "Palpable on examination, or progression >5 cm over 1 year", points: 2 },
+      { id: "pv_htn", label: "Arterial hypertension", cutoff: "Clinical diagnosis or active antihypertensive therapy", points: 2 },
+      { id: "pv_dm", label: "Diabetes mellitus", cutoff: "Clinical diagnosis of type 2 DM", points: 2 },
+      { id: "pv_hyp", label: "Hyperlipidaemia", cutoff: "Elevated LDL or active statin therapy", points: 1 },
+      { id: "pv_smoke", label: "Active smoking", cutoff: "Current smoker at time of evaluation", points: 1 }
+    ],
+    classes: [
+      { max: 3, name: "LOW", css: "low", rate: "<1% / year",
+        phenotype: "<strong>Reference phenotype:</strong> truly low-risk — age &lt;60, no thrombosis history, JAK2 VAF &lt;50%, Hct well controlled, no or minimal CVRF.<br><br><strong>Proposed management:</strong> phlebotomy + low-dose aspirin; aggressive modifiable CVRF management." },
+      { max: 7, name: "INTERMEDIATE", css: "intermediate", rate: "1.5–3% / year",
+        phenotype: "<strong>Reference phenotype:</strong> either (a) any patient with a prior thrombotic event as sole risk modifier (score 5, upper Intermediate), or (b) combination of 2+ conventional risk modifiers (e.g. age &#8805;60 plus JAK2 VAF &gt;50%). Approximates ELN high-risk minimum.<br><br><strong>Proposed management:</strong> consider individualised cytoreduction; evaluate first-line (HU or IFN) based on age, VAF, symptoms; optimise Hct and CVRF; for patients with isolated prior thrombosis, cytoreduction is indicated per ELN guidance." },
+      { max: 12, name: "HIGH", css: "high", rate: "3–5% / year",
+        phenotype: "<strong>Reference phenotype:</strong> prior thrombosis combined with additional risk modifiers (age &#8805;60 plus at least one further CVRF or disease-activity marker), or multiple concurrent modifiers without prior thrombosis.<br><br><strong>Proposed management:</strong> cytoreduction indicated; consider IFN or ruxolitinib if HU resistance/intolerance; aspirin/anticoagulation tailored to type of prior thrombosis." },
+      { max: 999, name: "VERY HIGH", css: "veryhigh", rate: ">5% / year",
+        phenotype: "<strong>Reference phenotype:</strong> full CSS-positive profile (prior thrombosis + inadequate Hct + progressive splenomegaly + CVRF cluster; Palandri 2025), recurrent thrombosis, thrombosis while on appropriate therapy, or multi-factorial profile with &#8805;3 modifiers in addition to prior thrombosis. Approximates De Stefano 2008 recurrent-thrombosis cohort (7.6%/year).<br><br><strong>Proposed management:</strong> cytoreduction mandatory; early switch if inadequate response; tight surveillance; extended anticoagulation; consider clinical trial enrolment." }
+    ],
+    additional: [
+      { id: "pv_qrisk3", label: "QRISK3 ≥7.5%", desc: "General-population CV risk; validated in PV (Duminuco 2025)" },
+      { id: "pv_ddimer", label: "D-dimer ≥1 mg/L", desc: "Emerging biomarker (Zhang L 2025); AUC 0.77 in composite model" },
+      { id: "pv_rdw", label: "Elevated RDW", desc: "Validated in general population (Manz 2023); MPN-specific cutoff undefined" },
+      { id: "pv_thromboinflam", label: "Thromboinflammation biomarkers", desc: "Citrullinated H3, S100A8/A9, tissue factor — experimental (Guy 2024)" },
+      { id: "pv_hmr", label: "HMR mutations (especially SRSF2)", desc: "Predominantly prognostic for survival; in MIPSS-PV" },
+      { id: "pv_age70", label: "Age ≥70 (extra gradient)", desc: "AAA score: steeper gradient beyond age 70" },
+      { id: "pv_on_treatment_thr", label: "Thrombosis on adequate cytoreduction", desc: "Biological resistance — consider early therapy switch" }
+    ]
+  },
+  ET: {
+    title: "ET Thrombosis Score",
+    max: 13,
+    core: [
+      { id: "et_prior_thr", label: "Prior thrombosis (any site)", cutoff: "History of any arterial or venous thrombotic event", points: 5 },
+      { id: "et_age60", label: "Age ≥60 years", cutoff: "At the time of evaluation", points: 2 },
+      { id: "et_jak2", label: "JAK2V617F mutation", cutoff: "Present vs absent (CALR, MPL, triple-negative as reference)", points: 2 },
+      { id: "et_leuk", label: "Persistent leukocytosis", cutoff: "WBC ≥11×10⁹/L confirmed on ≥2 measurements", points: 2 },
+      { id: "et_cvrf", label: "At least one CVRF", cutoff: "Any of: HTN, DM, hyperlipidaemia, active smoking, BMI ≥30", points: 1 },
+      { id: "et_spleen", label: "Palpable splenomegaly", cutoff: "On clinical examination", points: 1 }
+    ],
+    classes: [
+      { max: 2, name: "LOW", css: "low", rate: "<1% / year",
+        phenotype: "<strong>Reference phenotype:</strong> truly low-risk ET — age &lt;60, no thrombosis, CALR or triple-negative, or JAK2+ without CVRF. Consistent with IPSET-t very low / low.<br><br><strong>Proposed management:</strong> low-dose aspirin or observation; consider aspirin bid in selected patients; CVRF management." },
+      { max: 5, name: "INTERMEDIATE", css: "intermediate", rate: "1–2% / year",
+        phenotype: "<strong>Reference phenotype:</strong> either (a) any patient with a prior thrombotic event as sole risk modifier (score 5, upper Intermediate), or (b) IPSET-t intermediate (age &#8805;60 plus JAK2+ plus CVRF).<br><br><strong>Proposed management:</strong> consider individualised cytoreduction; aspirin; for patients with isolated prior thrombosis, cytoreduction is indicated per IPSET-t guidance." },
+      { max: 8, name: "HIGH", css: "high", rate: "3–4% / year",
+        phenotype: "<strong>Reference phenotype:</strong> IPSET-t high combined with additional modifiers (e.g. prior thrombosis + age &#8805;60 + JAK2 or WBC or CVRF; multiple concurrent RFs without prior thrombosis).<br><br><strong>Proposed management:</strong> cytoreduction indicated (HU or IFN); aspirin; consider anticoagulation if prior VTE." },
+      { max: 999, name: "VERY HIGH", css: "veryhigh", rate: ">4% / year",
+        phenotype: "<strong>Reference phenotype:</strong> prior thrombosis combined with &#8805;3 additional modifiers; recurrent thrombosis; multi-factorial risk profile.<br><br><strong>Proposed management:</strong> cytoreduction + antiplatelet/anticoagulation tailored to type of prior thrombosis; tight surveillance; evaluate second-line if inadequate response." }
+    ],
+    additional: [
+      { id: "et_qrisk3", label: "QRISK3 ≥7.5%", desc: "Validated in ET (Duminuco 2025); benefit of cytoreduction even in conventional low-risk" },
+      { id: "et_aaa", label: "AAA class High or Int-2", desc: "Age + ANC + ALC composite; strong thrombotic gradient (Udine 2024)" },
+      { id: "et_ddimer", label: "D-dimer ≥1 mg/L", desc: "Emerging biomarker; part of Zhang L 2025 predictive model" },
+      { id: "et_hmr", label: "HMR mutations (SRSF2, IDH1/2)", desc: "Signal aggressive phenotype; predominantly prognostic" },
+      { id: "et_extreme_plt", label: "Extreme thrombocytosis >1500×10⁹/L", desc: "Not predictive per se; evaluate VWF:RCo/Ag to exclude acquired vWS (Simini 2025)" },
+      { id: "et_tn_driver", label: "Triple-negative driver status", desc: "Lower thrombotic risk than JAK2 (protective); note only, not scored" },
+      { id: "et_thromboinflam", label: "Thromboinflammation biomarkers", desc: "S100A8/A9, H3cit; correlate with IPSET-t (Guy 2024 — experimental)" }
+    ]
+  }
+};
+
+// =============================================================
+// RENDERING
+// =============================================================
+function getDisease() {
+  const r = document.querySelector('input[name="disease"]:checked');
+  return r ? r.value : 'PV';
+}
+
+function renderScore() {
+  const disease = getDisease();
+  const S = SCORES[disease];
+  const area = document.getElementById('score-area');
+  area.innerHTML = '';
+
+  // Core section
+  const coreHtml = `
+    <div class="section">
+      <h2>${S.title} — Core variables
+        <span class="desc">Variables meeting inclusion criteria (HR ≥1.5, ≥2 MV studies, clinically applicable cutoff). Maximum: ${S.core.reduce((a,v)=>a+v.points,0)} points.</span>
+      </h2>
+      ${S.core.map(v => `
+        <label class="variable-row" for="${v.id}">
+          <input type="checkbox" id="${v.id}" data-points="${v.points}" data-label="${v.label}" data-category="core">
+          <div class="label-wrapper">
+            <div class="label">${v.label}</div>
+            <div class="cutoff">${v.cutoff}</div>
+          </div>
+          <span class="points">${v.points > 0 ? '+' : ''}${v.points} pt${v.points !== 1 ? 's' : ''}</span>
+        </label>
+      `).join('')}
+    </div>
+  `;
+
+  // Additional section
+  const additionalHtml = `
+    <div class="section additional-section">
+      <h2>Additional variables (red-flag modifiers)
+        <span class="desc">Do not contribute to the numerical score. Presence of any flag warrants caution and may justify individualised upgrading on clinical grounds.</span>
+      </h2>
+      ${S.additional.map(v => `
+        <label class="variable-row" for="${v.id}">
+          <input type="checkbox" id="${v.id}" data-label="${v.label}" data-category="additional">
+          <div class="label-wrapper">
+            <div class="label">${v.label}</div>
+            <div class="cutoff">${v.desc}</div>
+          </div>
+          <span class="points">⚑ flag</span>
+        </label>
+      `).join('')}
+    </div>
+  `;
+
+  area.innerHTML = coreHtml + additionalHtml;
+  document.getElementById('score-max').textContent = S.core.reduce((a,v)=>a+v.points,0);
+
+  // Attach change listeners
+  area.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', computeScore);
+  });
+  computeScore();
+}
+
+function computeScore() {
+  const disease = getDisease();
+  const S = SCORES[disease];
+  let total = 0;
+  const selectedCore = [];
+  const selectedFlags = [];
+
+  document.querySelectorAll('#score-area input[type="checkbox"]').forEach(cb => {
+    if (!cb.checked) return;
+    if (cb.dataset.category === 'core') {
+      total += parseInt(cb.dataset.points, 10);
+      selectedCore.push({ label: cb.dataset.label, points: parseInt(cb.dataset.points, 10) });
+    } else {
+      selectedFlags.push(cb.dataset.label);
+    }
+  });
+
+  // Find class
+  const cls = S.classes.find(c => total <= c.max);
+
+  // Update UI
+  document.getElementById('score-value').textContent = total;
+  document.getElementById('class-name').textContent = cls.name;
+  document.getElementById('class-rate').textContent = `Expected annual thrombosis rate: ${cls.rate}`;
+  document.getElementById('class-phenotype').innerHTML = cls.phenotype;
+
+  const box = document.getElementById('result-box');
+  box.className = 'result-box ' + cls.css;
+
+  const flagsBox = document.getElementById('additional-flags-box');
+  const flagsList = document.getElementById('flags-list');
+  if (selectedFlags.length) {
+    flagsBox.classList.remove('hidden');
+    flagsList.innerHTML = selectedFlags.map(f => `<li>${f}</li>`).join('');
+  } else {
+    flagsBox.classList.add('hidden');
+  }
+
+  // Store current state for export
+  window._currentState = { disease, total, cls, selectedCore, selectedFlags };
+}
+
+// =============================================================
+// EXPORT FUNCTIONS
+// =============================================================
+function stripHtml(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  return d.textContent || d.innerText || '';
+}
+
+function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const s = window._currentState;
+  const S = SCORES[s.disease];
+
+  const pid = document.getElementById('patient-id').value || '(not provided)';
+  const edate = document.getElementById('eval-date').value || new Date().toISOString().split('T')[0];
+  const evalBy = document.getElementById('eval-by').value || '(not provided)';
+
+  let y = 15;
+
+  // Header bar
+  doc.setFillColor(31, 78, 120);
+  doc.rect(0, 0, 210, 22, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text('MPN Thrombosis Risk Score — Report', 15, 12);
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.text('Research calculator v0.1 — preliminary — not validated for clinical use', 15, 18);
+  y = 28;
+
+  // Patient block
+  doc.setTextColor(50,50,50);
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'bold');
+  doc.text('Patient identifier:', 15, y);
+  doc.setFont(undefined, 'normal');
+  doc.text(pid, 50, y);
+  y += 5;
+  doc.setFont(undefined, 'bold');
+  doc.text('Evaluation date:', 15, y);
+  doc.setFont(undefined, 'normal');
+  doc.text(edate, 50, y);
+  y += 5;
+  doc.setFont(undefined, 'bold');
+  doc.text('Evaluated by:', 15, y);
+  doc.setFont(undefined, 'normal');
+  doc.text(evalBy, 50, y);
+  y += 5;
+  doc.setFont(undefined, 'bold');
+  doc.text('Disease:', 15, y);
+  doc.setFont(undefined, 'normal');
+  doc.text(s.disease === 'PV' ? 'Polycythaemia vera (PV)' : 'Essential thrombocythaemia (ET)', 50, y);
+  y += 10;
+
+  // Result block — coloured
+  const rgbMap = {low:[198,239,206], intermediate:[255,235,156], high:[255,217,102], veryhigh:[244,176,132]};
+  const rgb = rgbMap[s.cls.css];
+  doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+  doc.roundedRect(15, y, 180, 28, 2, 2, 'F');
+  doc.setTextColor(30,30,30);
+  doc.setFontSize(22);
+  doc.setFont(undefined, 'bold');
+  doc.text(`${s.total}/${S.max}`, 25, y+14);
+  doc.setFontSize(14);
+  doc.text(s.cls.name, 25, y+22);
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'normal');
+  doc.text(`Expected annual thrombosis rate: ${s.cls.rate}`, 90, y+14);
+  y += 36;
+
+  // Components checklist
+  doc.setTextColor(31, 78, 120);
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'bold');
+  doc.text('Score components (checked)', 15, y);
+  y += 6;
+  doc.setTextColor(50,50,50);
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  if (s.selectedCore.length === 0) {
+    doc.text('(none)', 20, y);
+    y += 5;
+  } else {
+    s.selectedCore.forEach(c => {
+      doc.text(`• ${c.label}`, 20, y);
+      doc.text(`+${c.points}`, 180, y, {align:'right'});
+      y += 5;
+      if (y > 270) { doc.addPage(); y = 20; }
+    });
+  }
+  y += 4;
+
+  // Flags
+  doc.setTextColor(84,130,53);
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'bold');
+  doc.text('Additional red-flag modifiers', 15, y);
+  y += 6;
+  doc.setTextColor(50,50,50);
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  if (s.selectedFlags.length === 0) {
+    doc.text('(none flagged)', 20, y);
+    y += 5;
+  } else {
+    s.selectedFlags.forEach(f => {
+      doc.text(`⚑ ${f}`, 20, y);
+      y += 5;
+      if (y > 270) { doc.addPage(); y = 20; }
+    });
+    y += 3;
+    doc.setFont(undefined, 'italic');
+    doc.setFontSize(8);
+    const warnLines = doc.splitTextToSize(
+      'Note: these variables do not contribute to the numerical score but may justify individualised upgrading of the risk class on clinical grounds.',
+      175);
+    doc.text(warnLines, 20, y);
+    y += warnLines.length * 4;
+  }
+  y += 4;
+
+  // Phenotype & management
+  if (y > 230) { doc.addPage(); y = 20; }
+  doc.setTextColor(31, 78, 120);
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'bold');
+  doc.text('Reference phenotype and proposed management', 15, y);
+  y += 6;
+  doc.setTextColor(50,50,50);
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  const phenoText = stripHtml(s.cls.phenotype);
+  const phenoLines = doc.splitTextToSize(phenoText, 175);
+  doc.text(phenoLines, 15, y);
+  y += phenoLines.length * 4 + 6;
+
+  // Disclaimer
+  if (y > 255) { doc.addPage(); y = 20; }
+  doc.setDrawColor(192, 0, 0);
+  doc.setFillColor(255, 230, 230);
+  doc.roundedRect(15, y, 180, 24, 2, 2, 'FD');
+  doc.setTextColor(120, 0, 0);
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'bold');
+  doc.text('⚠ Research use only', 20, y+6);
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(8);
+  const disc = doc.splitTextToSize(
+    'This score is a draft derived from systematic literature review. It has not undergone prospective clinical validation and is not approved as a medical device. It is not a substitute for clinical judgement. Do not use for individual treatment decisions outside of research settings.',
+    170);
+  doc.text(disc, 20, y+11);
+  y += 28;
+
+  // Footer
+  doc.setTextColor(140,140,140);
+  doc.setFontSize(7);
+  const ts = new Date().toISOString().replace('T', ' ').split('.')[0];
+  doc.text(`Report generated ${ts} — MPN Thrombosis Score calculator v0.1`, 15, 285);
+  doc.text('Reference: Duminuco A et al., [Manuscript in preparation, 2026]', 15, 290);
+
+  // Save
+  const fname = `MPN_ThrombosisScore_${s.disease}_${(pid.replace(/[^a-zA-Z0-9-_]/g,'_') || 'nopid')}_${edate}.pdf`;
+  doc.save(fname);
+}
+
+function exportCSV() {
+  const s = window._currentState;
+  const S = SCORES[s.disease];
+  const pid = document.getElementById('patient-id').value || '';
+  const edate = document.getElementById('eval-date').value || new Date().toISOString().split('T')[0];
+  const evalBy = document.getElementById('eval-by').value || '';
+
+  const rows = [];
+  rows.push(['field','value']);
+  rows.push(['patient_id', pid]);
+  rows.push(['evaluation_date', edate]);
+  rows.push(['evaluated_by', evalBy]);
+  rows.push(['disease', s.disease]);
+  rows.push(['score_total', s.total]);
+  rows.push(['score_max', S.max]);
+  rows.push(['risk_class', s.cls.name]);
+  rows.push(['expected_rate', s.cls.rate]);
+  rows.push(['', '']);
+  rows.push(['--- core variables (all, with 0/1) ---', '']);
+  S.core.forEach(v => {
+    const checked = document.getElementById(v.id)?.checked ? 1 : 0;
+    rows.push([v.id, checked]);
+  });
+  rows.push(['', '']);
+  rows.push(['--- additional flags (all, with 0/1) ---', '']);
+  S.additional.forEach(v => {
+    const checked = document.getElementById(v.id)?.checked ? 1 : 0;
+    rows.push([v.id, checked]);
+  });
+
+  const csv = rows.map(r => r.map(cell => {
+    const s = String(cell);
+    return /[,"\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+  }).join(',')).join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `MPN_ThrombosisScore_${s.disease}_${(pid.replace(/[^a-zA-Z0-9-_]/g,'_') || 'nopid')}_${edate}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function resetAll() {
+  document.querySelectorAll('#score-area input[type="checkbox"]').forEach(cb => cb.checked = false);
+  document.getElementById('patient-id').value = '';
+  document.getElementById('eval-by').value = '';
+  computeScore();
+}
+
+// =============================================================
+// WIRING
+// =============================================================
+document.querySelectorAll('input[name="disease"]').forEach(r => {
+  r.addEventListener('change', renderScore);
+});
+document.getElementById('export-pdf-btn').addEventListener('click', exportPDF);
+document.getElementById('export-csv-btn').addEventListener('click', exportCSV);
+document.getElementById('reset-btn').addEventListener('click', resetAll);
+
+// Init date
+document.getElementById('eval-date').value = new Date().toISOString().split('T')[0];
+
+// Initial render
+renderScore();
+</script>
+</body>
+</html>
