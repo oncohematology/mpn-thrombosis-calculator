@@ -726,13 +726,6 @@ function exportPDF() {
   doc.text(disc, 20, y+11);
   y += 28;
 
-  // Footer
-  doc.setTextColor(140,140,140);
-  doc.setFontSize(7);
-  const ts = new Date().toISOString().replace('T', ' ').split('.')[0];
-  doc.text(`Report generated ${ts} — MPN Thrombosis Score calculator v0.1`, 15, 285);
-  doc.text('Reference: Duminuco A et al., [Manuscript in preparation, 2026]', 15, 290);
-
   // Save
   const fname = `MPN_ThrombosisScore_${s.disease}_${(pid.replace(/[^a-zA-Z0-9-_]/g,'_') || 'nopid')}_${edate}.pdf`;
   doc.save(fname);
